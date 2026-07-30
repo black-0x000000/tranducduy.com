@@ -520,7 +520,7 @@
 
 <script>
 (function() {
-    // Dữ liệu mẫu - LUÔN GIỮ TÀI KHOẢN OWNER
+    // DỮ LIỆU MẪU - CHỈ CÓ 1 OWNER DUY NHẤT
     let accounts = [
         { id: 1, username: 'black_0x000000', password: 'owner123', role: 'owner' },
         { id: 2, username: 'admin', password: 'admin123', role: 'admin' },
@@ -551,6 +551,7 @@
 
     function getManagedAccounts(user) {
         if (user.role === 'owner') {
+            // Lọc bỏ owner và chỉ lấy các tài khoản khác
             return accounts.filter(acc => acc.id !== user.id);
         } else if (user.role === 'admin') {
             return accounts.filter(acc => acc.role === 'user');
@@ -604,7 +605,6 @@
                     if (l.dataset.page === 'home') l.classList.add('active');
                 });
             }
-            // User chỉ thấy trang chủ và cài đặt
             if (page === 'home') {
                 renderHome();
             } else if (page === 'settings') {
@@ -641,6 +641,11 @@
     function renderManagement() {
         const managedAccounts = getManagedAccounts(currentUser);
         const roleLabels = { user: 'User', admin: 'Admin', owner: 'Owner' };
+
+        // Log để kiểm tra
+        console.log('Current user:', currentUser);
+        console.log('All accounts:', accounts);
+        console.log('Managed accounts:', managedAccounts);
 
         let html = `
             <div class="management-header">
@@ -757,7 +762,7 @@
             });
         }
 
-        // Xử lý xóa và sửa
+        // Xử lý xóa
         document.querySelectorAll('.action-btn.delete').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = parseInt(this.dataset.id);
@@ -768,12 +773,15 @@
                     return;
                 }
                 if (confirm('Bạn có chắc muốn xóa tài khoản này?')) {
+                    // Xóa tài khoản khỏi mảng
                     accounts = accounts.filter(acc => acc.id !== id);
+                    console.log('Đã xóa. Accounts còn lại:', accounts);
                     renderPage('management');
                 }
             });
         });
 
+        // Xử lý sửa
         document.querySelectorAll('.action-btn.edit').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = parseInt(this.dataset.id);
@@ -932,6 +940,7 @@
     console.log('👑 black_0x000000 / owner123');
     console.log('🛡️ admin / admin123');
     console.log('👤 541261 / user123');
+    console.log('📊 Số lượng tài khoản ban đầu:', accounts.length);
 })();
 </script>
 </body>
