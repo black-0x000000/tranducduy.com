@@ -436,7 +436,9 @@ td {
     margin-top: 12px;
     font-weight: 600;
 }
-.mt-2 { margin-top: 10px; }
+.mt-2 {
+    margin-top: 10px;
+}
 
 /* Toast */
 .toast {
@@ -590,6 +592,15 @@ td {
     .action-btns {
         flex-direction: column;
         gap: 4px;
+    }
+    .update-placeholder {
+        padding: 60px 20px;
+    }
+    .update-placeholder .icon {
+        font-size: 60px;
+    }
+    .update-placeholder h2 {
+        font-size: 24px;
     }
 }
 @media (max-width: 480px) {
