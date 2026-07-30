@@ -12,7 +12,6 @@
 </head>
 <body>
 
-
 <div id="toast" class="toast"></div>
 
 <!-- Modal xác nhận -->
@@ -32,7 +31,7 @@
 </div>
 
 <!-- Login -->
-<div id="login-container">
+<div id="login-container" style="display:block;">
     <h2>🚀 Đăng nhập</h2>
     <p class="subtitle">Hệ thống quản lý tài khoản</p>
     <div class="login-field">
@@ -61,6 +60,24 @@
         </div>
     </div>
     <div id="dashboardContent"></div>
+</div>
+
+<!-- Chat Modal -->
+<div class="modal-overlay" id="chatModal">
+    <div class="modal-box" style="max-width:600px; max-height:80vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="color:#fff;" id="chatTopicTitle">💬 Chủ đề</h3>
+            <button class="modal-btn cancel" id="closeChatModal" style="flex:0; padding:8px 16px;">✕</button>
+        </div>
+        <div id="chatMessages" style="margin-bottom:16px; max-height:300px; overflow-y:auto; background:rgba(255,255,255,0.03); border-radius:12px; padding:16px;">
+            <p style="color:#8892b0; text-align:center;">Chưa có tin nhắn. Hãy bắt đầu trò chuyện!</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." style="flex:1; padding:12px 16px; background:#0a0e17; border:2px solid #233554; border-radius:10px; color:#e0e0e0; font-size:14px;">
+            <button class="settings-btn" id="sendChatBtn" style="flex:0; padding:12px 24px;">Gửi</button>
+        </div>
+        <div id="chatError" class="msg-error" style="display:none; margin-top:10px;"></div>
+    </div>
 </div>
 
 <script src="js/firebase-config.js"></script>
