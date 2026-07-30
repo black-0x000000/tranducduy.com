@@ -520,7 +520,7 @@
 
 <script>
 (function() {
-    // DỮ LIỆU MẪU - CHỈ CÓ 1 OWNER DUY NHẤT
+    // CHỈ GIỮ ĐÚNG 4 TÀI KHOẢN NHƯ TRONG ẢNH
     let accounts = [
         { id: 1, username: 'black_0x000000', password: 'owner123', role: 'owner' },
         { id: 2, username: 'admin', password: 'admin123', role: 'admin' },
@@ -598,7 +598,6 @@
         // User chỉ xem được trang chủ và cài đặt
         if (role === 'user') {
             if (page === 'management') {
-                // Nếu user cố tình vào quản lý thì chuyển về home
                 page = 'home';
                 document.querySelectorAll('.nav-menu a').forEach(l => {
                     l.classList.remove('active');
@@ -641,11 +640,6 @@
     function renderManagement() {
         const managedAccounts = getManagedAccounts(currentUser);
         const roleLabels = { user: 'User', admin: 'Admin', owner: 'Owner' };
-
-        // Log để kiểm tra
-        console.log('Current user:', currentUser);
-        console.log('All accounts:', accounts);
-        console.log('Managed accounts:', managedAccounts);
 
         let html = `
             <div class="management-header">
@@ -767,15 +761,12 @@
             btn.addEventListener('click', function() {
                 const id = parseInt(this.dataset.id);
                 const account = accounts.find(acc => acc.id === id);
-                // Không cho xóa Owner
                 if (account && account.role === 'owner') {
                     alert('Không thể xóa tài khoản Owner!');
                     return;
                 }
                 if (confirm('Bạn có chắc muốn xóa tài khoản này?')) {
-                    // Xóa tài khoản khỏi mảng
                     accounts = accounts.filter(acc => acc.id !== id);
-                    console.log('Đã xóa. Accounts còn lại:', accounts);
                     renderPage('management');
                 }
             });
@@ -787,7 +778,6 @@
                 const id = parseInt(this.dataset.id);
                 const account = accounts.find(acc => acc.id === id);
                 if (!account) return;
-                // Không cho sửa Owner
                 if (account.role === 'owner') {
                     alert('Không thể sửa tài khoản Owner!');
                     return;
@@ -836,7 +826,6 @@
         `;
         dashboardContent.innerHTML = html;
 
-        // Đổi mật khẩu
         document.getElementById('changePasswordBtn').addEventListener('click', function() {
             const oldPass = document.getElementById('oldPassword').value;
             const newPass = document.getElementById('newPassword').value;
@@ -876,7 +865,6 @@
             }
         });
 
-        // Đăng xuất
         document.getElementById('logoutDeviceBtn').addEventListener('click', logout);
     }
 
@@ -892,16 +880,12 @@
         loginContainer.style.display = 'none';
         dashboard.style.display = 'block';
         
-        // Update user info
         userName.textContent = currentUser.username;
         const roleNames = { owner: 'Chủ sở hữu hệ thống — toàn quyền', admin: 'Quản trị viên', user: 'Người dùng' };
         userRole.textContent = roleNames[currentUser.role] || 'Người dùng';
         userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
         
-        // Render menu theo role
         renderMenu();
-        
-        // Mặc định vào trang chủ
         renderPage('home');
         return true;
     }
@@ -915,7 +899,6 @@
         loginError.style.display = 'none';
     }
 
-    // Sự kiện
     loginBtn.addEventListener('click', function() {
         const username = loginUsername.value.trim();
         const password = loginPassword.value.trim();
@@ -931,7 +914,6 @@
     loginPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
     logoutBtn.addEventListener('click', logout);
 
-    // Khởi tạo
     loginContainer.style.display = 'block';
     dashboard.style.display = 'none';
     
@@ -940,7 +922,8 @@
     console.log('👑 black_0x000000 / owner123');
     console.log('🛡️ admin / admin123');
     console.log('👤 541261 / user123');
-    console.log('📊 Số lượng tài khoản ban đầu:', accounts.length);
+    console.log('👤 Money169-bau / user123');
+    console.log('👤 Vào / user123');
 })();
 </script>
 </body>
