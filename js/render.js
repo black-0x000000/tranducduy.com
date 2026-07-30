@@ -5,11 +5,19 @@ function renderMenu() {
     
     let menuHtml = '';
     const role = window.currentUser.role;
+    
+    // Trang chủ
     menuHtml += `<a class="active" data-page="home">Trang chủ</a>`;
+    
+    // Quản lý (chỉ Owner và Admin)
     if (role === 'owner' || role === 'admin') {
         menuHtml += `<a data-page="management">Quản lý</a>`;
     }
-    menuHtml += `<a data-page="chat">Chat</a>`;  // Thêm tab Chat
+    
+    // Chat (TẤT CẢ đều có)
+    menuHtml += `<a data-page="chat">Chat</a>`;
+    
+    // Cài đặt
     menuHtml += `<a data-page="settings">Cài đặt</a>`;
     
     const navMenu = document.getElementById('navMenu');
@@ -69,11 +77,10 @@ function renderChat() {
     const content = document.getElementById('dashboardContent');
     if (!content) return;
 
-    // Load các chủ đề chat
     loadChatTopics();
 
     let html = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
             <h2 style="color:#fff; font-size:24px;">💬 Diễn đàn thảo luận</h2>
             <button class="create-btn" id="createTopicBtn">+ Tạo chủ đề mới</button>
         </div>
@@ -83,7 +90,6 @@ function renderChat() {
     `;
     content.innerHTML = html;
 
-    // Tạo chủ đề mới
     const createBtn = document.getElementById('createTopicBtn');
     if (createBtn) {
         createBtn.addEventListener('click', function() {
@@ -95,7 +101,6 @@ function renderChat() {
     }
 }
 
-// Load chủ đề chat từ Firebase
 async function loadChatTopics() {
     try {
         const snapshot = await db.collection('chat_topics').orderBy('createdAt', 'desc').get();
@@ -110,10 +115,13 @@ async function loadChatTopics() {
         renderTopicList();
     } catch (error) {
         console.error('Lỗi load chủ đề:', error);
+        const topicList = document.getElementById('topicList');
+        if (topicList) {
+            topicList.innerHTML = `<p style="color:#ff6b6b; text-align:center; padding:40px;">❌ Lỗi tải chủ đề: ${error.message}</p>`;
+        }
     }
 }
 
-// Hiển thị danh sách chủ đề
 function renderTopicList() {
     const topicList = document.getElementById('topicList');
     if (!topicList) return;
@@ -148,7 +156,6 @@ function renderTopicList() {
         </div>
     `).join('');
 
-    // Gán sự kiện click cho topic
     document.querySelectorAll('.topic-item').forEach(item => {
         item.addEventListener('click', function() {
             const id = this.dataset.id;
@@ -157,7 +164,6 @@ function renderTopicList() {
     });
 }
 
-// Tạo chủ đề mới
 async function createChatTopic(name) {
     try {
         await db.collection('chat_topics').add({
@@ -174,16 +180,13 @@ async function createChatTopic(name) {
     }
 }
 
-// Xóa chủ đề
 async function deleteChatTopic(id) {
     if (!confirm('Bạn có chắc muốn xóa chủ đề này?')) return;
     try {
-        // Xóa tất cả tin nhắn trong chủ đề
         const messages = await db.collection('chat_messages').where('topicId', '==', id).get();
         messages.forEach(doc => {
             db.collection('chat_messages').doc(doc.id).delete();
         });
-        // Xóa chủ đề
         await db.collection('chat_topics').doc(id).delete();
         showToast('✅ Đã xóa chủ đề!', 'success');
         loadChatTopics();
@@ -193,7 +196,6 @@ async function deleteChatTopic(id) {
     }
 }
 
-// Mở chat topic
 function openChatTopic(topicId) {
     currentTopicId = topicId;
     const topic = chatTopics.find(t => t.id === topicId);
@@ -212,10 +214,8 @@ function openChatTopic(topicId) {
     modal.classList.add('active');
     messagesDiv.innerHTML = '<p style="color:#8892b0; text-align:center;">Đang tải tin nhắn...</p>';
 
-    // Load tin nhắn
     loadChatMessages(topicId);
 
-    // Xử lý gửi tin nhắn
     const sendMessage = async function() {
         const text = input.value.trim();
         if (!text) {
@@ -232,7 +232,6 @@ function openChatTopic(topicId) {
                 message: text,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            // Cập nhật số tin nhắn
             await db.collection('chat_topics').doc(topicId).update({
                 messageCount: firebase.firestore.FieldValue.increment(1)
             });
@@ -251,7 +250,6 @@ function openChatTopic(topicId) {
         errorDiv.style.display = 'none';
     };
 
-    // Đóng modal
     document.getElementById('closeChatModal').onclick = function() {
         if (chatUnsubscribe) {
             chatUnsubscribe();
@@ -261,7 +259,6 @@ function openChatTopic(topicId) {
     };
 }
 
-// Load tin nhắn realtime
 function loadChatMessages(topicId) {
     if (chatUnsubscribe) {
         chatUnsubscribe();
@@ -380,7 +377,6 @@ function renderManagement() {
     
     content.innerHTML = html;
     
-    // Xử lý form tạo tài khoản
     const openModal = document.getElementById('openCreateModal');
     const closeForm = document.getElementById('closeCreateForm');
     const formContainer = document.getElementById('createFormContainer');
@@ -437,7 +433,6 @@ function renderManagement() {
         });
     }
 
-    // Xóa
     document.querySelectorAll('.action-btn.delete').forEach(btn => {
         btn.addEventListener('click', function() {
             const id = this.dataset.id;
@@ -453,7 +448,6 @@ function renderManagement() {
         });
     });
 
-    // Sửa
     document.querySelectorAll('.action-btn.edit').forEach(btn => {
         btn.addEventListener('click', async function() {
             const id = this.dataset.id;
