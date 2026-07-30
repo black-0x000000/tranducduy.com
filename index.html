@@ -1,1 +1,894 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Hệ thống quản lý tài khoản</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        body {
+            background: #0a0e17;
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
 
+        /* Login */
+        #login-container {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(20px);
+            padding: 50px 40px;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            width: 420px;
+            max-width: 100%;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin: 50px auto;
+        }
+        #login-container h2 {
+            text-align: center;
+            color: #fff;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        #login-container .subtitle {
+            text-align: center;
+            color: #8892b0;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        .login-field {
+            margin-bottom: 20px;
+        }
+        .login-field label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #ccd6f6;
+            font-size: 14px;
+        }
+        .login-field input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #233554;
+            border-radius: 14px;
+            font-size: 15px;
+            transition: all 0.3s;
+            background: #0a0e17;
+            color: #e0e0e0;
+        }
+        .login-field input:focus {
+            border-color: #64ffda;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(100,255,218,0.1);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #64ffda, #00b4d8);
+            border: none;
+            border-radius: 14px;
+            color: #0a0e17;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(100,255,218,0.3);
+        }
+        .login-error {
+            color: #ff6b6b;
+            text-align: center;
+            margin-top: 16px;
+            font-size: 14px;
+            background: rgba(255,107,107,0.1);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        /* Dashboard */
+        #dashboard {
+            display: none;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .dash-header {
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(10px);
+            padding: 16px 30px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        .nav-menu a {
+            color: #8892b0;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 15px;
+            transition: all 0.3s;
+            cursor: pointer;
+            padding: 8px 0;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-menu a:hover, .nav-menu a.active {
+            color: #64ffda;
+            border-bottom-color: #64ffda;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #64ffda, #00b4d8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #0a0e17;
+        }
+        .user-name {
+            color: #ccd6f6;
+            font-weight: 600;
+        }
+        .user-role {
+            color: #64ffda;
+            font-size: 12px;
+            background: rgba(100,255,218,0.1);
+            padding: 2px 12px;
+            border-radius: 20px;
+        }
+        .logout-btn {
+            background: rgba(255,107,107,0.2);
+            border: 1px solid rgba(255,107,107,0.3);
+            padding: 8px 20px;
+            border-radius: 30px;
+            color: #ff6b6b;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: rgba(255,107,107,0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Content */
+        .page-content {
+            display: block;
+        }
+        .page-content.hidden {
+            display: none;
+        }
+
+        /* Update page */
+        .update-placeholder {
+            text-align: center;
+            padding: 120px 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .update-placeholder .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            display: block;
+        }
+        .update-placeholder h2 {
+            color: #fff;
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .update-placeholder p {
+            color: #8892b0;
+            font-size: 18px;
+        }
+
+        /* Management Page */
+        .management-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .management-header h2 {
+            color: #fff;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .create-btn {
+            background: linear-gradient(135deg, #64ffda, #00b4d8);
+            border: none;
+            padding: 10px 24px;
+            border-radius: 30px;
+            color: #0a0e17;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        .create-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(100,255,218,0.3);
+        }
+
+        .table-container {
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background: rgba(255,255,255,0.05);
+        }
+        th {
+            padding: 16px 20px;
+            text-align: left;
+            color: #8892b0;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            color: #ccd6f6;
+        }
+        .role-badge {
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .role-badge.user {
+            background: rgba(100,255,218,0.15);
+            color: #64ffda;
+        }
+        .role-badge.admin {
+            background: rgba(255,214,0,0.15);
+            color: #ffd700;
+        }
+        .role-badge.owner {
+            background: rgba(255,107,107,0.15);
+            color: #ff6b6b;
+        }
+        .action-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .action-btn {
+            padding: 4px 14px;
+            border-radius: 20px;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .action-btn.edit {
+            background: rgba(100,255,218,0.15);
+            color: #64ffda;
+        }
+        .action-btn.edit:hover {
+            background: rgba(100,255,218,0.25);
+        }
+        .action-btn.delete {
+            background: rgba(255,107,107,0.15);
+            color: #ff6b6b;
+        }
+        .action-btn.delete:hover {
+            background: rgba(255,107,107,0.25);
+        }
+
+        /* Settings Page */
+        .settings-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .settings-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 24px;
+        }
+        .settings-card h3 {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .settings-card .form-group {
+            margin-bottom: 18px;
+        }
+        .settings-card .form-group label {
+            display: block;
+            color: #8892b0;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .settings-card .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0a0e17;
+            border: 2px solid #233554;
+            border-radius: 10px;
+            color: #e0e0e0;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .settings-card .form-group input:focus {
+            border-color: #64ffda;
+            outline: none;
+        }
+        .settings-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #64ffda, #00b4d8);
+            border: none;
+            border-radius: 10px;
+            color: #0a0e17;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 15px;
+        }
+        .settings-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(100,255,218,0.3);
+        }
+        .danger-btn {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+        .danger-btn:hover {
+            box-shadow: 0 8px 25px rgba(255,107,107,0.3);
+        }
+        .divider {
+            height: 1px;
+            background: rgba(255,255,255,0.05);
+            margin: 24px 0;
+        }
+
+        /* Create form */
+        #createFormContainer {
+            margin-top: 30px;
+        }
+        #createFormContainer .settings-card {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(100,255,218,0.2);
+        }
+        #createFormContainer select {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0a0e17;
+            border: 2px solid #233554;
+            border-radius: 10px;
+            color: #e0e0e0;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        #createFormContainer select:focus {
+            border-color: #64ffda;
+            outline: none;
+        }
+
+        /* Messages */
+        .msg-success {
+            color: #64ffda;
+            background: rgba(100,255,218,0.1);
+            padding: 10px 16px;
+            border-radius: 10px;
+            margin-top: 12px;
+            font-weight: 600;
+        }
+        .msg-error {
+            color: #ff6b6b;
+            background: rgba(255,107,107,0.1);
+            padding: 10px 16px;
+            border-radius: 10px;
+            margin-top: 12px;
+            font-weight: 600;
+        }
+        .mt-2 { margin-top: 10px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dash-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            .nav-menu {
+                flex-wrap: wrap;
+                gap: 16px;
+                justify-content: center;
+            }
+            .user-info {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            table {
+                font-size: 13px;
+            }
+            th, td {
+                padding: 12px 14px;
+            }
+            .action-btns {
+                flex-direction: column;
+                gap: 4px;
+            }
+            .update-placeholder {
+                padding: 60px 20px;
+            }
+            .update-placeholder .icon {
+                font-size: 60px;
+            }
+            .update-placeholder h2 {
+                font-size: 24px;
+            }
+        }
+        @media (max-width: 480px) {
+            #login-container {
+                padding: 30px 20px;
+                margin: 20px;
+            }
+            .dash-header {
+                padding: 12px 16px;
+            }
+            .nav-menu {
+                gap: 12px;
+            }
+            .nav-menu a {
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-container">
+    <h2>🚀 Đăng nhập</h2>
+    <p class="subtitle">Hệ thống quản lý tài khoản</p>
+    <div class="login-field">
+        <label>👤 Tên đăng nhập</label>
+        <input type="text" id="loginUsername" placeholder="Nhập tên đăng nhập" />
+    </div>
+    <div class="login-field">
+        <label>🔒 Mật khẩu</label>
+        <input type="password" id="loginPassword" placeholder="Nhập mật khẩu" />
+    </div>
+    <button class="login-btn" id="loginBtn">Đăng nhập</button>
+    <div id="loginError" class="login-error" style="display:none;"></div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+    <!-- Header -->
+    <div class="dash-header">
+        <div class="nav-menu">
+            <a class="active" data-page="home">Trang chủ</a>
+            <a data-page="management">Quản lý</a>
+            <a data-page="settings">Cài đặt</a>
+        </div>
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">B</div>
+            <div>
+                <div class="user-name" id="userName">black_0x000000</div>
+                <div class="user-role" id="userRole">Chủ sở hữu hệ thống — toàn quyền</div>
+            </div>
+            <button class="logout-btn" id="logoutBtn">Đăng xuất</button>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div id="dashboardContent"></div>
+</div>
+
+<script>
+(function() {
+    // Dữ liệu mẫu
+    let accounts = [
+        { id: 1, username: 'black_0x000000', password: 'owner123', role: 'owner' },
+        { id: 2, username: 'admin', password: 'admin123', role: 'admin' },
+        { id: 3, username: '541261', password: 'user123', role: 'user' },
+        { id: 4, username: 'Money169-bau', password: 'user123', role: 'user' },
+        { id: 5, username: 'Vào', password: 'user123', role: 'user' },
+    ];
+    let currentUser = null;
+    let currentPage = 'home';
+
+    // DOM refs
+    const loginContainer = document.getElementById('login-container');
+    const dashboard = document.getElementById('dashboard');
+    const dashboardContent = document.getElementById('dashboardContent');
+    const loginUsername = document.getElementById('loginUsername');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userName = document.getElementById('userName');
+    const userRole = document.getElementById('userRole');
+    const userAvatar = document.getElementById('userAvatar');
+
+    // Navigation
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.nav-menu a').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            const page = this.dataset.page;
+            currentPage = page;
+            renderPage(page);
+        });
+    });
+
+    function findAccount(username, password) {
+        return accounts.find(acc => acc.username === username && acc.password === password);
+    }
+
+    function getManagedAccounts(user) {
+        if (user.role === 'owner') {
+            return accounts.filter(acc => acc.id !== user.id);
+        } else if (user.role === 'admin') {
+            return accounts.filter(acc => acc.role === 'user');
+        }
+        return [];
+    }
+
+    function renderPage(page) {
+        if (!currentUser) return;
+        
+        if (currentUser.role === 'user') {
+            dashboardContent.innerHTML = `
+                <div class="update-placeholder">
+                    <span class="icon">🚧</span>
+                    <h2>Website đang được cập nhật</h2>
+                    <p>Chúng tôi đang nâng cấp hệ thống để phục vụ bạn tốt hơn</p>
+                </div>
+            `;
+            return;
+        }
+
+        switch(page) {
+            case 'home':
+                renderHome();
+                break;
+            case 'management':
+                renderManagement();
+                break;
+            case 'settings':
+                renderSettings();
+                break;
+            default:
+                renderHome();
+        }
+    }
+
+    function renderHome() {
+        dashboardContent.innerHTML = `
+            <div class="update-placeholder">
+                <span class="icon">🚧</span>
+                <h2>Website đang được cập nhật</h2>
+                <p>Chúng tôi đang nâng cấp hệ thống để phục vụ bạn tốt hơn</p>
+            </div>
+        `;
+    }
+
+    function renderManagement() {
+        const managedAccounts = getManagedAccounts(currentUser);
+        const roleLabels = { user: 'User', admin: 'Admin', owner: 'Owner' };
+
+        let html = `
+            <div class="management-header">
+                <h2>Tài khoản người dùng bạn quản lý</h2>
+                <button class="create-btn" id="openCreateModal">+ Tạo tài khoản</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>TÊN ĐĂNG NHẬP</th>
+                            <th>LOẠI</th>
+                            <th>THAO TÁC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${managedAccounts.length === 0 ? `
+                            <tr>
+                                <td colspan="3" style="text-align:center; color:#8892b0; padding:30px;">
+                                    Chưa có tài khoản nào
+                                </td>
+                            </tr>
+                        ` : managedAccounts.map(acc => `
+                            <tr>
+                                <td>${acc.username}</td>
+                                <td><span class="role-badge ${acc.role}">${roleLabels[acc.role] || acc.role}</span></td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="action-btn edit" data-id="${acc.id}">Sửa</button>
+                                        <button class="action-btn delete" data-id="${acc.id}">Xóa</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div id="createFormContainer" style="display: none;">
+                <div class="settings-card">
+                    <h3>➕ Tạo tài khoản mới</h3>
+                    <div class="form-group">
+                        <label>Tên đăng nhập</label>
+                        <input type="text" id="newUsername" placeholder="Nhập tên đăng nhập" />
+                    </div>
+                    <div class="form-group">
+                        <label>Mật khẩu</label>
+                        <input type="password" id="newPassword" placeholder="Nhập mật khẩu" />
+                    </div>
+                    <div class="form-group">
+                        <label>Loại tài khoản</label>
+                        <select id="newRole">
+                            <option value="user">User</option>
+                            ${currentUser.role === 'owner' ? '<option value="admin">Admin</option>' : ''}
+                        </select>
+                    </div>
+                    <button class="settings-btn" id="createAccountBtn">Tạo tài khoản</button>
+                    <button class="settings-btn" style="margin-top:10px; background:rgba(255,255,255,0.1);" id="closeCreateForm">Hủy</button>
+                    <div id="createMsg" class="mt-2"></div>
+                </div>
+            </div>
+        `;
+        dashboardContent.innerHTML = html;
+
+        // Xử lý tạo tài khoản
+        const openModal = document.getElementById('openCreateModal');
+        const closeForm = document.getElementById('closeCreateForm');
+        const formContainer = document.getElementById('createFormContainer');
+        const createBtn = document.getElementById('createAccountBtn');
+        const newUsername = document.getElementById('newUsername');
+        const newPassword = document.getElementById('newPassword');
+        const newRole = document.getElementById('newRole');
+        const createMsg = document.getElementById('createMsg');
+
+        if (openModal) {
+            openModal.addEventListener('click', () => {
+                formContainer.style.display = 'block';
+                openModal.style.display = 'none';
+            });
+        }
+        if (closeForm) {
+            closeForm.addEventListener('click', () => {
+                formContainer.style.display = 'none';
+                if (openModal) openModal.style.display = 'inline-block';
+            });
+        }
+
+        if (createBtn) {
+            createBtn.addEventListener('click', function() {
+                const username = newUsername.value.trim();
+                const password = newPassword.value.trim();
+                const role = newRole.value;
+
+                if (!username || !password) {
+                    createMsg.className = 'msg-error';
+                    createMsg.textContent = '⚠️ Vui lòng nhập đầy đủ thông tin';
+                    return;
+                }
+                if (accounts.some(acc => acc.username === username)) {
+                    createMsg.className = 'msg-error';
+                    createMsg.textContent = '⚠️ Tên đăng nhập đã tồn tại';
+                    return;
+                }
+                const newId = accounts.length ? Math.max(...accounts.map(a => a.id)) + 1 : 1;
+                accounts.push({ id: newId, username, password, role });
+                createMsg.className = 'msg-success';
+                createMsg.textContent = `✅ Đã tạo tài khoản "${username}" thành công!`;
+                newUsername.value = '';
+                newPassword.value = '';
+                setTimeout(() => {
+                    formContainer.style.display = 'none';
+                    if (openModal) openModal.style.display = 'inline-block';
+                    renderPage('management');
+                }, 1500);
+            });
+        }
+
+        // Xử lý xóa và sửa
+        document.querySelectorAll('.action-btn.delete').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = parseInt(this.dataset.id);
+                if (confirm('Bạn có chắc muốn xóa tài khoản này?')) {
+                    accounts = accounts.filter(acc => acc.id !== id);
+                    renderPage('management');
+                }
+            });
+        });
+
+        document.querySelectorAll('.action-btn.edit').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = parseInt(this.dataset.id);
+                const account = accounts.find(acc => acc.id === id);
+                if (!account) return;
+                
+                const newUsername = prompt('Nhập tên đăng nhập mới:', account.username);
+                if (newUsername && newUsername.trim() !== '') {
+                    if (accounts.some(acc => acc.username === newUsername.trim() && acc.id !== id)) {
+                        alert('Tên đăng nhập đã tồn tại!');
+                        return;
+                    }
+                    account.username = newUsername.trim();
+                    renderPage('management');
+                }
+            });
+        });
+    }
+
+    function renderSettings() {
+        let html = `
+            <div class="settings-container">
+                <div class="settings-card">
+                    <h3>🔒 Đổi mật khẩu</h3>
+                    <div class="form-group">
+                        <label>Mật khẩu cũ</label>
+                        <input type="password" id="oldPassword" placeholder="Nhập mật khẩu cũ" />
+                    </div>
+                    <div class="form-group">
+                        <label>Mật khẩu mới</label>
+                        <input type="password" id="newPassword" placeholder="Nhập mật khẩu mới" />
+                    </div>
+                    <div class="form-group">
+                        <label>Xác nhận mật khẩu mới</label>
+                        <input type="password" id="confirmPassword" placeholder="Xác nhận mật khẩu mới" />
+                    </div>
+                    <button class="settings-btn" id="changePasswordBtn">Đổi Mật Khẩu</button>
+                    <div id="passwordMsg" class="mt-2"></div>
+                </div>
+
+                <div class="settings-card">
+                    <h3>👤 Tài Khoản</h3>
+                    <p style="color: #8892b0; margin-bottom: 16px;">Đăng xuất khỏi thiết bị này.</p>
+                    <button class="settings-btn danger-btn" id="logoutDeviceBtn">Đăng Xuất Hệ Thống</button>
+                </div>
+            </div>
+        `;
+        dashboardContent.innerHTML = html;
+
+        // Đổi mật khẩu
+        document.getElementById('changePasswordBtn').addEventListener('click', function() {
+            const oldPass = document.getElementById('oldPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+            const msg = document.getElementById('passwordMsg');
+
+            if (!oldPass || !newPass || !confirmPass) {
+                msg.className = 'msg-error';
+                msg.textContent = '⚠️ Vui lòng nhập đầy đủ thông tin';
+                return;
+            }
+            if (oldPass !== currentUser.password) {
+                msg.className = 'msg-error';
+                msg.textContent = '❌ Mật khẩu cũ không đúng';
+                return;
+            }
+            if (newPass !== confirmPass) {
+                msg.className = 'msg-error';
+                msg.textContent = '❌ Mật khẩu xác nhận không khớp';
+                return;
+            }
+            if (newPass.length < 6) {
+                msg.className = 'msg-error';
+                msg.textContent = '❌ Mật khẩu mới phải có ít nhất 6 ký tự';
+                return;
+            }
+
+            const account = accounts.find(acc => acc.id === currentUser.id);
+            if (account) {
+                account.password = newPass;
+                currentUser.password = newPass;
+                msg.className = 'msg-success';
+                msg.textContent = '✅ Đổi mật khẩu thành công!';
+                document.getElementById('oldPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+            }
+        });
+
+        // Đăng xuất
+        document.getElementById('logoutDeviceBtn').addEventListener('click', logout);
+    }
+
+    function login(username, password) {
+        const account = findAccount(username, password);
+        if (!account) {
+            loginError.style.display = 'block';
+            loginError.textContent = '❌ Sai tên đăng nhập hoặc mật khẩu';
+            return false;
+        }
+        currentUser = { ...account };
+        loginError.style.display = 'none';
+        loginContainer.style.display = 'none';
+        dashboard.style.display = 'block';
+        
+        // Update user info
+        userName.textContent = currentUser.username;
+        const roleNames = { owner: 'Chủ sở hữu hệ thống — toàn quyền', admin: 'Quản trị viên', user: 'Người dùng' };
+        userRole.textContent = roleNames[currentUser.role] || 'Người dùng';
+        userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
+        
+        renderPage('home');
+        return true;
+    }
+
+    function logout() {
+        currentUser = null;
+        dashboard.style.display = 'none';
+        loginContainer.style.display = 'block';
+        loginUsername.value = '';
+        loginPassword.value = '';
+        loginError.style.display = 'none';
+    }
+
+    // Sự kiện
+    loginBtn.addEventListener('click', function() {
+        const username = loginUsername.value.trim();
+        const password = loginPassword.value.trim();
+        if (!username || !password) {
+            loginError.style.display = 'block';
+            loginError.textContent = '⚠️ Vui lòng nhập tên và mật khẩu';
+            return;
+        }
+        login(username, password);
+    });
+
+    loginUsername.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
+    loginPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
+    logoutBtn.addEventListener('click', logout);
+
+    // Khởi tạo
+    loginContainer.style.display = 'block';
+    dashboard.style.display = 'none';
+    
+    console.log('🚀 Hệ thống sẵn sàng!');
+    console.log('📝 Tài khoản mẫu:');
+    console.log('👑 black_0x000000 / owner123');
+    console.log('🛡️ admin / admin123');
+    console.log('👤 541261 / user123');
+})();
+</script>
+</body>
+</html>
