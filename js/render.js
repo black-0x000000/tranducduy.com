@@ -11,7 +11,9 @@ function renderMenu() {
     }
     menuHtml += `<a data-page="settings">Cài đặt</a>`;
     
-    document.getElementById('navMenu').innerHTML = menuHtml;
+    const navMenu = document.getElementById('navMenu');
+    if (!navMenu) return;
+    navMenu.innerHTML = menuHtml;
     
     document.querySelectorAll('.nav-menu a').forEach(link => {
         link.addEventListener('click', function() {
@@ -45,7 +47,9 @@ function renderPage(page) {
 }
 
 function renderHome() {
-    document.getElementById('dashboardContent').innerHTML = `
+    const content = document.getElementById('dashboardContent');
+    if (!content) return;
+    content.innerHTML = `
         <div class="update-placeholder">
             <span class="icon">🚧</span>
             <h2>Website đang được cập nhật</h2>
@@ -55,6 +59,9 @@ function renderHome() {
 }
 
 function renderManagement() {
+    const content = document.getElementById('dashboardContent');
+    if (!content) return;
+    
     const managedAccounts = getManagedAccounts(window.currentUser);
     const roleLabels = { user: 'User', admin: 'Admin', owner: 'Owner' };
 
@@ -119,7 +126,7 @@ function renderManagement() {
         </div>
     `;
     
-    document.getElementById('dashboardContent').innerHTML = html;
+    content.innerHTML = html;
     
     // Xử lý form tạo tài khoản
     const openModal = document.getElementById('openCreateModal');
@@ -131,50 +138,54 @@ function renderManagement() {
     const newRole = document.getElementById('newRole');
     const createMsg = document.getElementById('createMsg');
 
-    formContainer.style.display = 'none';
+    if (formContainer) formContainer.style.display = 'none';
 
     if (openModal) {
         openModal.addEventListener('click', () => {
-            formContainer.style.display = 'block';
+            if (formContainer) formContainer.style.display = 'block';
             openModal.style.display = 'none';
         });
     }
     if (closeForm) {
         closeForm.addEventListener('click', () => {
-            formContainer.style.display = 'none';
+            if (formContainer) formContainer.style.display = 'none';
             if (openModal) openModal.style.display = 'inline-block';
         });
     }
 
     if (createBtn) {
         createBtn.addEventListener('click', async function() {
-            const username = newUsername.value.trim();
-            const password = newPassword.value.trim();
-            const role = newRole.value;
+            const username = newUsername ? newUsername.value.trim() : '';
+            const password = newPassword ? newPassword.value.trim() : '';
+            const role = newRole ? newRole.value : 'user';
 
             if (!username || !password) {
-                createMsg.className = 'msg-error';
-                createMsg.textContent = '⚠️ Vui lòng nhập đầy đủ thông tin';
+                if (createMsg) {
+                    createMsg.className = 'msg-error';
+                    createMsg.textContent = '⚠️ Vui lòng nhập đầy đủ thông tin';
+                }
                 return;
             }
 
             const result = await createAccount(username, password, role);
-            createMsg.className = result.success ? 'msg-success' : 'msg-error';
-            createMsg.textContent = result.message;
+            if (createMsg) {
+                createMsg.className = result.success ? 'msg-success' : 'msg-error';
+                createMsg.textContent = result.message;
+            }
             
             if (result.success) {
-                newUsername.value = '';
-                newPassword.value = '';
+                if (newUsername) newUsername.value = '';
+                if (newPassword) newPassword.value = '';
                 showToast(result.message, 'success');
                 setTimeout(() => {
-                    formContainer.style.display = 'none';
+                    if (formContainer) formContainer.style.display = 'none';
                     if (openModal) openModal.style.display = 'inline-block';
                 }, 1500);
             }
         });
     }
 
-    // Xóa - mở modal
+    // Xóa
     document.querySelectorAll('.action-btn.delete').forEach(btn => {
         btn.addEventListener('click', function() {
             const id = this.dataset.id;
@@ -219,7 +230,10 @@ function renderManagement() {
 }
 
 function renderSettings() {
-    let html = `
+    const content = document.getElementById('dashboardContent');
+    if (!content) return;
+    
+    content.innerHTML = `
         <div class="settings-container">
             <div class="settings-card">
                 <h3>🔒 Đổi mật khẩu</h3>
@@ -246,50 +260,69 @@ function renderSettings() {
             </div>
         </div>
     `;
-    
-    document.getElementById('dashboardContent').innerHTML = html;
 
-    document.getElementById('changePasswordBtn').addEventListener('click', async function() {
-        const oldPass = document.getElementById('oldPassword').value;
-        const newPass = document.getElementById('newPassword').value;
-        const confirmPass = document.getElementById('confirmPassword').value;
-        const msg = document.getElementById('passwordMsg');
+    const changeBtn = document.getElementById('changePasswordBtn');
+    if (changeBtn) {
+        changeBtn.addEventListener('click', async function() {
+            const oldPass = document.getElementById('oldPassword') ? document.getElementById('oldPassword').value : '';
+            const newPass = document.getElementById('newPassword') ? document.getElementById('newPassword').value : '';
+            const confirmPass = document.getElementById('confirmPassword') ? document.getElementById('confirmPassword').value : '';
+            const msg = document.getElementById('passwordMsg');
 
-        if (!oldPass || !newPass || !confirmPass) {
-            msg.className = 'msg-error';
-            msg.textContent = '⚠️ Vui lòng nhập đầy đủ thông tin';
-            return;
-        }
-        if (oldPass !== window.currentUser.password) {
-            msg.className = 'msg-error';
-            msg.textContent = '❌ Mật khẩu cũ không đúng';
-            return;
-        }
-        if (newPass !== confirmPass) {
-            msg.className = 'msg-error';
-            msg.textContent = '❌ Mật khẩu xác nhận không khớp';
-            return;
-        }
-        if (newPass.length < 6) {
-            msg.className = 'msg-error';
-            msg.textContent = '❌ Mật khẩu mới phải có ít nhất 6 ký tự';
-            return;
-        }
+            if (!oldPass || !newPass || !confirmPass) {
+                if (msg) {
+                    msg.className = 'msg-error';
+                    msg.textContent = '⚠️ Vui lòng nhập đầy đủ thông tin';
+                }
+                return;
+            }
+            if (oldPass !== window.currentUser.password) {
+                if (msg) {
+                    msg.className = 'msg-error';
+                    msg.textContent = '❌ Mật khẩu cũ không đúng';
+                }
+                return;
+            }
+            if (newPass !== confirmPass) {
+                if (msg) {
+                    msg.className = 'msg-error';
+                    msg.textContent = '❌ Mật khẩu xác nhận không khớp';
+                }
+                return;
+            }
+            if (newPass.length < 6) {
+                if (msg) {
+                    msg.className = 'msg-error';
+                    msg.textContent = '❌ Mật khẩu mới phải có ít nhất 6 ký tự';
+                }
+                return;
+            }
 
-        const result = await changePassword(window.currentUser.id, newPass);
-        if (result.success) {
-            window.currentUser.password = newPass;
-            msg.className = 'msg-success';
-            msg.textContent = '✅ Đổi mật khẩu thành công!';
-            document.getElementById('oldPassword').value = '';
-            document.getElementById('newPassword').value = '';
-            document.getElementById('confirmPassword').value = '';
-            showToast('✅ Đổi mật khẩu thành công!', 'success');
-        } else {
-            msg.className = 'msg-error';
-            msg.textContent = '❌ Lỗi khi đổi mật khẩu!';
-        }
-    });
+            const result = await changePassword(window.currentUser.id, newPass);
+            if (result.success) {
+                window.currentUser.password = newPass;
+                if (msg) {
+                    msg.className = 'msg-success';
+                    msg.textContent = '✅ Đổi mật khẩu thành công!';
+                }
+                const oldInput = document.getElementById('oldPassword');
+                const newInput = document.getElementById('newPassword');
+                const confirmInput = document.getElementById('confirmPassword');
+                if (oldInput) oldInput.value = '';
+                if (newInput) newInput.value = '';
+                if (confirmInput) confirmInput.value = '';
+                showToast('✅ Đổi mật khẩu thành công!', 'success');
+            } else {
+                if (msg) {
+                    msg.className = 'msg-error';
+                    msg.textContent = '❌ Lỗi khi đổi mật khẩu!';
+                }
+            }
+        });
+    }
 
-    document.getElementById('logoutDeviceBtn').addEventListener('click', logout);
+    const logoutBtn = document.getElementById('logoutDeviceBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
 }
