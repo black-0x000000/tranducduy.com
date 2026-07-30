@@ -443,6 +443,34 @@
         }
         .mt-2 { margin-top: 10px; }
 
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+            display: none;
+        }
+        .toast.success {
+            background: rgba(100,255,218,0.2);
+            border: 1px solid #64ffda;
+            color: #64ffda;
+        }
+        .toast.error {
+            background: rgba(255,107,107,0.2);
+            border: 1px solid #ff6b6b;
+            color: #ff6b6b;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
         @media (max-width: 768px) {
             .dash-header {
                 flex-direction: column;
@@ -477,6 +505,11 @@
             .update-placeholder h2 {
                 font-size: 24px;
             }
+            .toast {
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+            }
         }
         @media (max-width: 480px) {
             #login-container {
@@ -502,6 +535,9 @@
     <div class="spinner"></div>
     <p>🔄 Đang kết nối Firebase...</p>
 </div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
 
 <!-- LOGIN -->
 <div id="login-container">
@@ -537,7 +573,6 @@
 
 <script>
 // ============ CẤU HÌNH FIREBASE ============
-// ✅ ĐÃ PASTE CONFIG CỦA BẠN VÀO ĐÂY
 const firebaseConfig = {
     apiKey: "AIzaSyCWKh2PbqVtf3vOZptH1N-pWLXjRTT_YTw",
     authDomain: "tranducduy-dfdcd.firebaseapp.com",
@@ -556,6 +591,7 @@ const db = firebase.firestore();
 let currentUser = null;
 let currentPage = 'home';
 let accounts = [];
+let unsubscribeListener = null;
 
 // DOM refs
 const loading = document.getElementById('loading');
@@ -571,49 +607,78 @@ const userName = document.getElementById('userName');
 const userRole = document.getElementById('userRole');
 const userAvatar = document.getElementById('userAvatar');
 const navMenu = document.getElementById('navMenu');
+const toast = document.getElementById('toast');
+
+// ============ TOAST NOTIFICATION ============
+function showToast(message, type = 'success') {
+    toast.textContent = message;
+    toast.className = `toast ${type}`;
+    toast.style.display = 'block';
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3000);
+}
+
+// ============ REALTIME LISTENER ============
+function startRealtimeListener() {
+    if (unsubscribeListener) {
+        unsubscribeListener();
+    }
+    
+    unsubscribeListener = db.collection('accounts')
+        .onSnapshot((snapshot) => {
+            accounts = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                accounts.push({
+                    id: doc.id,
+                    username: data.username,
+                    password: data.password,
+                    role: data.role
+                });
+            });
+            
+            console.log('🔄 Dữ liệu được cập nhật realtime:', accounts.length, 'tài khoản');
+            
+            // Nếu đang ở trang quản lý, refresh lại
+            if (currentUser && currentPage === 'management') {
+                renderPage('management');
+            }
+            
+            // Cập nhật danh sách tài khoản để đăng nhập
+            if (currentUser) {
+                const updatedUser = accounts.find(acc => acc.id === currentUser.id);
+                if (updatedUser) {
+                    currentUser = { ...updatedUser };
+                    // Cập nhật thông tin hiển thị
+                    userName.textContent = currentUser.username;
+                    const roleNames = { owner: 'Chủ sở hữu hệ thống — toàn quyền', admin: 'Quản trị viên', user: 'Người dùng' };
+                    userRole.textContent = roleNames[currentUser.role] || 'Người dùng';
+                    userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
+                }
+            }
+        }, (error) => {
+            console.error('❌ Lỗi realtime listener:', error);
+        });
+}
 
 // ============ HÀM XỬ LÝ FIREBASE ============
-
-// Lấy danh sách tài khoản từ Firestore
-async function loadAccounts() {
-    try {
-        const snapshot = await db.collection('accounts').get();
-        accounts = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            accounts.push({ 
-                id: doc.id, 
-                username: data.username,
-                password: data.password,
-                role: data.role
-            });
-        });
-        console.log('✅ Đã tải', accounts.length, 'tài khoản từ Firebase');
-        return accounts;
-    } catch (error) {
-        console.error('❌ Lỗi tải tài khoản:', error);
-        return [];
-    }
-}
 
 // Tạo tài khoản mới
 async function createAccount(username, password, role) {
     try {
-        // Kiểm tra trùng tên
         const existing = accounts.find(acc => acc.username === username);
         if (existing) {
             return { success: false, message: '⚠️ Tên đăng nhập đã tồn tại!' };
         }
         
-        const docRef = await db.collection('accounts').add({
+        await db.collection('accounts').add({
             username: username,
             password: password,
             role: role,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        const newAccount = { id: docRef.id, username, password, role };
-        accounts.push(newAccount);
         return { success: true, message: `✅ Đã tạo tài khoản "${username}" thành công!` };
     } catch (error) {
         console.error('❌ Lỗi tạo tài khoản:', error);
@@ -625,7 +690,6 @@ async function createAccount(username, password, role) {
 async function deleteAccount(id) {
     try {
         await db.collection('accounts').doc(id).delete();
-        accounts = accounts.filter(acc => acc.id !== id);
         return { success: true };
     } catch (error) {
         console.error('❌ Lỗi xóa tài khoản:', error);
@@ -639,10 +703,6 @@ async function updateAccount(id, newUsername) {
         await db.collection('accounts').doc(id).update({
             username: newUsername
         });
-        const account = accounts.find(acc => acc.id === id);
-        if (account) {
-            account.username = newUsername;
-        }
         return { success: true };
     } catch (error) {
         console.error('❌ Lỗi cập nhật:', error);
@@ -656,10 +716,6 @@ async function changePassword(id, newPassword) {
         await db.collection('accounts').doc(id).update({
             password: newPassword
         });
-        const account = accounts.find(acc => acc.id === id);
-        if (account) {
-            account.password = newPassword;
-        }
         return { success: true };
     } catch (error) {
         console.error('❌ Lỗi đổi mật khẩu:', error);
@@ -830,10 +886,11 @@ function renderManagement() {
             if (result.success) {
                 newUsername.value = '';
                 newPassword.value = '';
+                showToast(result.message, 'success');
                 setTimeout(() => {
                     formContainer.style.display = 'none';
                     if (openModal) openModal.style.display = 'inline-block';
-                    renderPage('management');
+                    // Không cần render lại vì realtime listener sẽ tự động cập nhật
                 }, 1500);
             }
         });
@@ -851,9 +908,10 @@ function renderManagement() {
             if (confirm('Bạn có chắc muốn xóa tài khoản này?')) {
                 const result = await deleteAccount(id);
                 if (result.success) {
-                    renderPage('management');
+                    showToast('✅ Đã xóa tài khoản thành công!', 'success');
+                    // Realtime listener sẽ tự động cập nhật
                 } else {
-                    alert('❌ Lỗi khi xóa tài khoản!');
+                    showToast('❌ Lỗi khi xóa tài khoản!', 'error');
                 }
             }
         });
@@ -878,9 +936,10 @@ function renderManagement() {
                 }
                 const result = await updateAccount(id, newUsername.trim());
                 if (result.success) {
-                    renderPage('management');
+                    showToast('✅ Đã cập nhật tài khoản!', 'success');
+                    // Realtime listener sẽ tự động cập nhật
                 } else {
-                    alert('❌ Lỗi khi cập nhật!');
+                    showToast('❌ Lỗi khi cập nhật!', 'error');
                 }
             }
         });
@@ -946,12 +1005,12 @@ function renderSettings() {
 
         const result = await changePassword(currentUser.id, newPass);
         if (result.success) {
-            currentUser.password = newPass;
             msg.className = 'msg-success';
             msg.textContent = '✅ Đổi mật khẩu thành công!';
             document.getElementById('oldPassword').value = '';
             document.getElementById('newPassword').value = '';
             document.getElementById('confirmPassword').value = '';
+            showToast('✅ Đổi mật khẩu thành công!', 'success');
         } else {
             msg.className = 'msg-error';
             msg.textContent = '❌ Lỗi khi đổi mật khẩu!';
@@ -975,6 +1034,9 @@ async function login(username, password) {
     loginContainer.style.display = 'none';
     dashboard.style.display = 'block';
     
+    // Bắt đầu realtime listener
+    startRealtimeListener();
+    
     userName.textContent = currentUser.username;
     const roleNames = { owner: 'Chủ sở hữu hệ thống — toàn quyền', admin: 'Quản trị viên', user: 'Người dùng' };
     userRole.textContent = roleNames[currentUser.role] || 'Người dùng';
@@ -982,31 +1044,50 @@ async function login(username, password) {
     
     renderMenu();
     renderPage('home');
+    showToast(`👋 Chào mừng ${currentUser.username}!`, 'success');
     return true;
 }
 
 function logout() {
+    if (unsubscribeListener) {
+        unsubscribeListener();
+        unsubscribeListener = null;
+    }
     currentUser = null;
     dashboard.style.display = 'none';
     loginContainer.style.display = 'block';
     loginUsername.value = '';
     loginPassword.value = '';
     loginError.style.display = 'none';
+    showToast('👋 Đã đăng xuất!', 'success');
 }
 
 // ============ KHỞI TẠO ============
 
 async function init() {
-    // Load dữ liệu từ Firebase
-    await loadAccounts();
+    // Load dữ liệu lần đầu
+    try {
+        const snapshot = await db.collection('accounts').get();
+        accounts = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            accounts.push({
+                id: doc.id,
+                username: data.username,
+                password: data.password,
+                role: data.role
+            });
+        });
+        console.log('✅ Đã tải', accounts.length, 'tài khoản từ Firebase');
+    } catch (error) {
+        console.error('❌ Lỗi tải tài khoản:', error);
+    }
     
-    // Ẩn loading, hiện login
     loading.style.display = 'none';
     loginContainer.style.display = 'block';
     
     console.log('🚀 Hệ thống sẵn sàng!');
     console.log('📊 Số tài khoản:', accounts.length);
-    console.log('📝 Danh sách tài khoản:', accounts);
 }
 
 // Sự kiện
