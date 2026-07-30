@@ -3,13 +3,18 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Hệ thống quản lý tài khoản</title>
+    <title>Quản lý tài khoản - Firebase</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
         }
         body {
             background: #0a0e17;
@@ -17,7 +22,37 @@
             color: #e0e0e0;
         }
 
-        /* Login */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #0a0e17;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        #loading .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(100,255,218,0.1);
+            border-top: 3px solid #64ffda;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #loading p {
+            color: #64ffda;
+            margin-top: 20px;
+            font-weight: 600;
+        }
+
         #login-container {
             background: rgba(255,255,255,0.05);
             backdrop-filter: blur(20px);
@@ -28,6 +63,7 @@
             max-width: 100%;
             border: 1px solid rgba(255,255,255,0.1);
             margin: 50px auto;
+            display: none;
         }
         #login-container h2 {
             text-align: center;
@@ -91,9 +127,9 @@
             background: rgba(255,107,107,0.1);
             padding: 10px;
             border-radius: 10px;
+            display: none;
         }
 
-        /* Dashboard */
         #dashboard {
             display: none;
             width: 100%;
@@ -101,8 +137,6 @@
             margin: 0 auto;
             padding: 20px;
         }
-
-        /* Header */
         .dash-header {
             background: rgba(255,255,255,0.03);
             backdrop-filter: blur(10px);
@@ -178,15 +212,6 @@
             transform: translateY(-2px);
         }
 
-        /* Content */
-        .page-content {
-            display: block;
-        }
-        .page-content.hidden {
-            display: none;
-        }
-
-        /* Update page */
         .update-placeholder {
             text-align: center;
             padding: 120px 20px;
@@ -210,7 +235,6 @@
             font-size: 18px;
         }
 
-        /* Management Page */
         .management-header {
             display: flex;
             justify-content: space-between;
@@ -313,7 +337,6 @@
             background: rgba(255,107,107,0.25);
         }
 
-        /* Settings Page */
         .settings-container {
             max-width: 600px;
             margin: 0 auto;
@@ -378,15 +401,10 @@
         .danger-btn:hover {
             box-shadow: 0 8px 25px rgba(255,107,107,0.3);
         }
-        .divider {
-            height: 1px;
-            background: rgba(255,255,255,0.05);
-            margin: 24px 0;
-        }
 
-        /* Create form */
         #createFormContainer {
             margin-top: 30px;
+            display: none;
         }
         #createFormContainer .settings-card {
             background: rgba(255,255,255,0.05);
@@ -407,7 +425,6 @@
             outline: none;
         }
 
-        /* Messages */
         .msg-success {
             color: #64ffda;
             background: rgba(100,255,218,0.1);
@@ -426,7 +443,6 @@
         }
         .mt-2 { margin-top: 10px; }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .dash-header {
                 flex-direction: column;
@@ -481,6 +497,12 @@
 </head>
 <body>
 
+<!-- Loading -->
+<div id="loading">
+    <div class="spinner"></div>
+    <p>🔄 Đang kết nối Firebase...</p>
+</div>
+
 <!-- LOGIN -->
 <div id="login-container">
     <h2>🚀 Đăng nhập</h2>
@@ -494,16 +516,13 @@
         <input type="password" id="loginPassword" placeholder="Nhập mật khẩu" />
     </div>
     <button class="login-btn" id="loginBtn">Đăng nhập</button>
-    <div id="loginError" class="login-error" style="display:none;"></div>
+    <div id="loginError" class="login-error"></div>
 </div>
 
 <!-- DASHBOARD -->
 <div id="dashboard">
-    <!-- Header -->
     <div class="dash-header">
-        <div class="nav-menu" id="navMenu">
-            <!-- Menu sẽ được render động dựa theo role -->
-        </div>
+        <div class="nav-menu" id="navMenu"></div>
         <div class="user-info">
             <div class="user-avatar" id="userAvatar">B</div>
             <div>
@@ -513,239 +532,302 @@
             <button class="logout-btn" id="logoutBtn">Đăng xuất</button>
         </div>
     </div>
-
-    <!-- Content -->
     <div id="dashboardContent"></div>
 </div>
 
 <script>
-(function() {
-    // CHỈ GIỮ ĐÚNG 4 TÀI KHOẢN NHƯ TRONG ẢNH
-    let accounts = [
-        { id: 1, username: 'black_0x000000', password: 'owner123', role: 'owner' },
-        { id: 2, username: 'admin', password: 'admin123', role: 'admin' },
-        { id: 3, username: '541261', password: 'user123', role: 'user' },
-        { id: 4, username: 'Money169-bau', password: 'user123', role: 'user' },
-        { id: 5, username: 'Vào', password: 'user123', role: 'user' },
-    ];
-    let currentUser = null;
-    let currentPage = 'home';
+// ============ CẤU HÌNH FIREBASE ============
+// ✅ ĐÃ PASTE CONFIG CỦA BẠN VÀO ĐÂY
+const firebaseConfig = {
+    apiKey: "AIzaSyCWKh2PbqVtf3vOZptH1N-pWLXjRTT_YTw",
+    authDomain: "tranducduy-dfdcd.firebaseapp.com",
+    projectId: "tranducduy-dfdcd",
+    storageBucket: "tranducduy-dfdcd.firebasestorage.app",
+    messagingSenderId: "1058324395419",
+    appId: "1:1058324395419:web:d4d6e4893f9162e0269d3e",
+    measurementId: "G-NM4YQYZ7P0"
+};
 
-    // DOM refs
-    const loginContainer = document.getElementById('login-container');
-    const dashboard = document.getElementById('dashboard');
-    const dashboardContent = document.getElementById('dashboardContent');
-    const loginUsername = document.getElementById('loginUsername');
-    const loginPassword = document.getElementById('loginPassword');
-    const loginBtn = document.getElementById('loginBtn');
-    const loginError = document.getElementById('loginError');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const userName = document.getElementById('userName');
-    const userRole = document.getElementById('userRole');
-    const userAvatar = document.getElementById('userAvatar');
-    const navMenu = document.getElementById('navMenu');
+// Khởi tạo Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-    function findAccount(username, password) {
-        return accounts.find(acc => acc.username === username && acc.password === password);
-    }
+// ============ CODE CHÍNH ============
+let currentUser = null;
+let currentPage = 'home';
+let accounts = [];
 
-    function getManagedAccounts(user) {
-        if (user.role === 'owner') {
-            // Lọc bỏ owner và chỉ lấy các tài khoản khác
-            return accounts.filter(acc => acc.id !== user.id);
-        } else if (user.role === 'admin') {
-            return accounts.filter(acc => acc.role === 'user');
-        }
+// DOM refs
+const loading = document.getElementById('loading');
+const loginContainer = document.getElementById('login-container');
+const dashboard = document.getElementById('dashboard');
+const dashboardContent = document.getElementById('dashboardContent');
+const loginUsername = document.getElementById('loginUsername');
+const loginPassword = document.getElementById('loginPassword');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+const logoutBtn = document.getElementById('logoutBtn');
+const userName = document.getElementById('userName');
+const userRole = document.getElementById('userRole');
+const userAvatar = document.getElementById('userAvatar');
+const navMenu = document.getElementById('navMenu');
+
+// ============ HÀM XỬ LÝ FIREBASE ============
+
+// Lấy danh sách tài khoản từ Firestore
+async function loadAccounts() {
+    try {
+        const snapshot = await db.collection('accounts').get();
+        accounts = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            accounts.push({ 
+                id: doc.id, 
+                username: data.username,
+                password: data.password,
+                role: data.role
+            });
+        });
+        console.log('✅ Đã tải', accounts.length, 'tài khoản từ Firebase');
+        return accounts;
+    } catch (error) {
+        console.error('❌ Lỗi tải tài khoản:', error);
         return [];
     }
+}
 
-    function renderMenu() {
-        if (!currentUser) return;
-        
-        let menuHtml = '';
-        const role = currentUser.role;
-        
-        // Trang chủ luôn có
-        menuHtml += `<a class="active" data-page="home">Trang chủ</a>`;
-        
-        // Chỉ Owner và Admin mới có Quản lý
-        if (role === 'owner' || role === 'admin') {
-            menuHtml += `<a data-page="management">Quản lý</a>`;
+// Tạo tài khoản mới
+async function createAccount(username, password, role) {
+    try {
+        // Kiểm tra trùng tên
+        const existing = accounts.find(acc => acc.username === username);
+        if (existing) {
+            return { success: false, message: '⚠️ Tên đăng nhập đã tồn tại!' };
         }
         
-        // Cài đặt luôn có
-        menuHtml += `<a data-page="settings">Cài đặt</a>`;
+        const docRef = await db.collection('accounts').add({
+            username: username,
+            password: password,
+            role: role,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
         
-        navMenu.innerHTML = menuHtml;
-        
-        // Gán sự kiện cho menu
-        document.querySelectorAll('.nav-menu a').forEach(link => {
-            link.addEventListener('click', function() {
-                document.querySelectorAll('.nav-menu a').forEach(l => l.classList.remove('active'));
-                this.classList.add('active');
-                const page = this.dataset.page;
-                currentPage = page;
-                renderPage(page);
-            });
+        const newAccount = { id: docRef.id, username, password, role };
+        accounts.push(newAccount);
+        return { success: true, message: `✅ Đã tạo tài khoản "${username}" thành công!` };
+    } catch (error) {
+        console.error('❌ Lỗi tạo tài khoản:', error);
+        return { success: false, message: '❌ Lỗi kết nối Firebase!' };
+    }
+}
+
+// Xóa tài khoản
+async function deleteAccount(id) {
+    try {
+        await db.collection('accounts').doc(id).delete();
+        accounts = accounts.filter(acc => acc.id !== id);
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Lỗi xóa tài khoản:', error);
+        return { success: false };
+    }
+}
+
+// Cập nhật tài khoản
+async function updateAccount(id, newUsername) {
+    try {
+        await db.collection('accounts').doc(id).update({
+            username: newUsername
+        });
+        const account = accounts.find(acc => acc.id === id);
+        if (account) {
+            account.username = newUsername;
+        }
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Lỗi cập nhật:', error);
+        return { success: false };
+    }
+}
+
+// Đổi mật khẩu
+async function changePassword(id, newPassword) {
+    try {
+        await db.collection('accounts').doc(id).update({
+            password: newPassword
+        });
+        const account = accounts.find(acc => acc.id === id);
+        if (account) {
+            account.password = newPassword;
+        }
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Lỗi đổi mật khẩu:', error);
+        return { success: false };
+    }
+}
+
+// ============ HÀM HIỂN THỊ ============
+
+function renderMenu() {
+    if (!currentUser) return;
+    let menuHtml = '';
+    const role = currentUser.role;
+    menuHtml += `<a class="active" data-page="home">Trang chủ</a>`;
+    if (role === 'owner' || role === 'admin') {
+        menuHtml += `<a data-page="management">Quản lý</a>`;
+    }
+    menuHtml += `<a data-page="settings">Cài đặt</a>`;
+    navMenu.innerHTML = menuHtml;
+    
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.nav-menu a').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            currentPage = this.dataset.page;
+            renderPage(currentPage);
+        });
+    });
+}
+
+function renderPage(page) {
+    if (!currentUser) return;
+    const role = currentUser.role;
+    
+    if (role === 'user' && page === 'management') {
+        page = 'home';
+        document.querySelectorAll('.nav-menu a').forEach(l => {
+            l.classList.remove('active');
+            if (l.dataset.page === 'home') l.classList.add('active');
+        });
+    }
+    
+    switch(page) {
+        case 'home': renderHome(); break;
+        case 'management': renderManagement(); break;
+        case 'settings': renderSettings(); break;
+        default: renderHome();
+    }
+}
+
+function renderHome() {
+    dashboardContent.innerHTML = `
+        <div class="update-placeholder">
+            <span class="icon">🚧</span>
+            <h2>Website đang được cập nhật</h2>
+            <p>Chúng tôi đang nâng cấp hệ thống để phục vụ bạn tốt hơn</p>
+        </div>
+    `;
+}
+
+function renderManagement() {
+    const managedAccounts = accounts.filter(acc => acc.id !== currentUser.id);
+    const roleLabels = { user: 'User', admin: 'Admin', owner: 'Owner' };
+
+    let html = `
+        <div class="management-header">
+            <h2>Tài khoản người dùng bạn quản lý</h2>
+            <button class="create-btn" id="openCreateModal">+ Tạo tài khoản</button>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>TÊN ĐĂNG NHẬP</th>
+                        <th>LOẠI</th>
+                        <th>THAO TÁC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${managedAccounts.length === 0 ? `
+                        <tr>
+                            <td colspan="3" style="text-align:center; color:#8892b0; padding:30px;">
+                                Chưa có tài khoản nào
+                            </td>
+                        </tr>
+                    ` : managedAccounts.map(acc => `
+                        <tr>
+                            <td>${acc.username}</td>
+                            <td><span class="role-badge ${acc.role}">${roleLabels[acc.role] || acc.role}</span></td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="action-btn edit" data-id="${acc.id}">Sửa</button>
+                                    <button class="action-btn delete" data-id="${acc.id}">Xóa</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+        <div id="createFormContainer">
+            <div class="settings-card">
+                <h3>➕ Tạo tài khoản mới</h3>
+                <div class="form-group">
+                    <label>Tên đăng nhập</label>
+                    <input type="text" id="newUsername" placeholder="Nhập tên đăng nhập" />
+                </div>
+                <div class="form-group">
+                    <label>Mật khẩu</label>
+                    <input type="password" id="newPassword" placeholder="Nhập mật khẩu" />
+                </div>
+                <div class="form-group">
+                    <label>Loại tài khoản</label>
+                    <select id="newRole">
+                        <option value="user">User</option>
+                        ${currentUser.role === 'owner' ? '<option value="admin">Admin</option>' : ''}
+                    </select>
+                </div>
+                <button class="settings-btn" id="createAccountBtn">Tạo tài khoản</button>
+                <button class="settings-btn" style="margin-top:10px; background:rgba(255,255,255,0.1);" id="closeCreateForm">Hủy</button>
+                <div id="createMsg" class="mt-2"></div>
+            </div>
+        </div>
+    `;
+    dashboardContent.innerHTML = html;
+
+    // Xử lý form tạo tài khoản
+    const openModal = document.getElementById('openCreateModal');
+    const closeForm = document.getElementById('closeCreateForm');
+    const formContainer = document.getElementById('createFormContainer');
+    const createBtn = document.getElementById('createAccountBtn');
+    const newUsername = document.getElementById('newUsername');
+    const newPassword = document.getElementById('newPassword');
+    const newRole = document.getElementById('newRole');
+    const createMsg = document.getElementById('createMsg');
+
+    formContainer.style.display = 'none';
+
+    if (openModal) {
+        openModal.addEventListener('click', () => {
+            formContainer.style.display = 'block';
+            openModal.style.display = 'none';
+        });
+    }
+    if (closeForm) {
+        closeForm.addEventListener('click', () => {
+            formContainer.style.display = 'none';
+            if (openModal) openModal.style.display = 'inline-block';
         });
     }
 
-    function renderPage(page) {
-        if (!currentUser) return;
-        
-        const role = currentUser.role;
-        
-        // User chỉ xem được trang chủ và cài đặt
-        if (role === 'user') {
-            if (page === 'management') {
-                page = 'home';
-                document.querySelectorAll('.nav-menu a').forEach(l => {
-                    l.classList.remove('active');
-                    if (l.dataset.page === 'home') l.classList.add('active');
-                });
+    if (createBtn) {
+        createBtn.addEventListener('click', async function() {
+            const username = newUsername.value.trim();
+            const password = newPassword.value.trim();
+            const role = newRole.value;
+
+            if (!username || !password) {
+                createMsg.className = 'msg-error';
+                createMsg.textContent = '⚠️ Vui lòng nhập đầy đủ thông tin';
+                return;
             }
-            if (page === 'home') {
-                renderHome();
-            } else if (page === 'settings') {
-                renderSettings();
-            }
-            return;
-        }
 
-        switch(page) {
-            case 'home':
-                renderHome();
-                break;
-            case 'management':
-                renderManagement();
-                break;
-            case 'settings':
-                renderSettings();
-                break;
-            default:
-                renderHome();
-        }
-    }
-
-    function renderHome() {
-        dashboardContent.innerHTML = `
-            <div class="update-placeholder">
-                <span class="icon">🚧</span>
-                <h2>Website đang được cập nhật</h2>
-                <p>Chúng tôi đang nâng cấp hệ thống để phục vụ bạn tốt hơn</p>
-            </div>
-        `;
-    }
-
-    function renderManagement() {
-        const managedAccounts = getManagedAccounts(currentUser);
-        const roleLabels = { user: 'User', admin: 'Admin', owner: 'Owner' };
-
-        let html = `
-            <div class="management-header">
-                <h2>Tài khoản người dùng bạn quản lý</h2>
-                <button class="create-btn" id="openCreateModal">+ Tạo tài khoản</button>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>TÊN ĐĂNG NHẬP</th>
-                            <th>LOẠI</th>
-                            <th>THAO TÁC</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${managedAccounts.length === 0 ? `
-                            <tr>
-                                <td colspan="3" style="text-align:center; color:#8892b0; padding:30px;">
-                                    Chưa có tài khoản nào
-                                </td>
-                            </tr>
-                        ` : managedAccounts.map(acc => `
-                            <tr>
-                                <td>${acc.username}</td>
-                                <td><span class="role-badge ${acc.role}">${roleLabels[acc.role] || acc.role}</span></td>
-                                <td>
-                                    <div class="action-btns">
-                                        <button class="action-btn edit" data-id="${acc.id}">Sửa</button>
-                                        <button class="action-btn delete" data-id="${acc.id}">Xóa</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-            <div id="createFormContainer" style="display: none;">
-                <div class="settings-card">
-                    <h3>➕ Tạo tài khoản mới</h3>
-                    <div class="form-group">
-                        <label>Tên đăng nhập</label>
-                        <input type="text" id="newUsername" placeholder="Nhập tên đăng nhập" />
-                    </div>
-                    <div class="form-group">
-                        <label>Mật khẩu</label>
-                        <input type="password" id="newPassword" placeholder="Nhập mật khẩu" />
-                    </div>
-                    <div class="form-group">
-                        <label>Loại tài khoản</label>
-                        <select id="newRole">
-                            <option value="user">User</option>
-                            ${currentUser.role === 'owner' ? '<option value="admin">Admin</option>' : ''}
-                        </select>
-                    </div>
-                    <button class="settings-btn" id="createAccountBtn">Tạo tài khoản</button>
-                    <button class="settings-btn" style="margin-top:10px; background:rgba(255,255,255,0.1);" id="closeCreateForm">Hủy</button>
-                    <div id="createMsg" class="mt-2"></div>
-                </div>
-            </div>
-        `;
-        dashboardContent.innerHTML = html;
-
-        // Xử lý tạo tài khoản
-        const openModal = document.getElementById('openCreateModal');
-        const closeForm = document.getElementById('closeCreateForm');
-        const formContainer = document.getElementById('createFormContainer');
-        const createBtn = document.getElementById('createAccountBtn');
-        const newUsername = document.getElementById('newUsername');
-        const newPassword = document.getElementById('newPassword');
-        const newRole = document.getElementById('newRole');
-        const createMsg = document.getElementById('createMsg');
-
-        if (openModal) {
-            openModal.addEventListener('click', () => {
-                formContainer.style.display = 'block';
-                openModal.style.display = 'none';
-            });
-        }
-        if (closeForm) {
-            closeForm.addEventListener('click', () => {
-                formContainer.style.display = 'none';
-                if (openModal) openModal.style.display = 'inline-block';
-            });
-        }
-
-        if (createBtn) {
-            createBtn.addEventListener('click', function() {
-                const username = newUsername.value.trim();
-                const password = newPassword.value.trim();
-                const role = newRole.value;
-
-                if (!username || !password) {
-                    createMsg.className = 'msg-error';
-                    createMsg.textContent = '⚠️ Vui lòng nhập đầy đủ thông tin';
-                    return;
-                }
-                if (accounts.some(acc => acc.username === username)) {
-                    createMsg.className = 'msg-error';
-                    createMsg.textContent = '⚠️ Tên đăng nhập đã tồn tại';
-                    return;
-                }
-                const newId = accounts.length ? Math.max(...accounts.map(a => a.id)) + 1 : 1;
-                accounts.push({ id: newId, username, password, role });
-                createMsg.className = 'msg-success';
-                createMsg.textContent = `✅ Đã tạo tài khoản "${username}" thành công!`;
+            const result = await createAccount(username, password, role);
+            createMsg.className = result.success ? 'msg-success' : 'msg-error';
+            createMsg.textContent = result.message;
+            
+            if (result.success) {
                 newUsername.value = '';
                 newPassword.value = '';
                 setTimeout(() => {
@@ -753,178 +835,198 @@
                     if (openModal) openModal.style.display = 'inline-block';
                     renderPage('management');
                 }, 1500);
-            });
-        }
+            }
+        });
+    }
 
-        // Xử lý xóa
-        document.querySelectorAll('.action-btn.delete').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = parseInt(this.dataset.id);
-                const account = accounts.find(acc => acc.id === id);
-                if (account && account.role === 'owner') {
-                    alert('Không thể xóa tài khoản Owner!');
-                    return;
-                }
-                if (confirm('Bạn có chắc muốn xóa tài khoản này?')) {
-                    accounts = accounts.filter(acc => acc.id !== id);
+    // Xử lý xóa
+    document.querySelectorAll('.action-btn.delete').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const id = this.dataset.id;
+            const account = accounts.find(acc => acc.id === id);
+            if (account && account.role === 'owner') {
+                alert('Không thể xóa tài khoản Owner!');
+                return;
+            }
+            if (confirm('Bạn có chắc muốn xóa tài khoản này?')) {
+                const result = await deleteAccount(id);
+                if (result.success) {
                     renderPage('management');
+                } else {
+                    alert('❌ Lỗi khi xóa tài khoản!');
                 }
-            });
-        });
-
-        // Xử lý sửa
-        document.querySelectorAll('.action-btn.edit').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = parseInt(this.dataset.id);
-                const account = accounts.find(acc => acc.id === id);
-                if (!account) return;
-                if (account.role === 'owner') {
-                    alert('Không thể sửa tài khoản Owner!');
-                    return;
-                }
-                
-                const newUsername = prompt('Nhập tên đăng nhập mới:', account.username);
-                if (newUsername && newUsername.trim() !== '') {
-                    if (accounts.some(acc => acc.username === newUsername.trim() && acc.id !== id)) {
-                        alert('Tên đăng nhập đã tồn tại!');
-                        return;
-                    }
-                    account.username = newUsername.trim();
-                    renderPage('management');
-                }
-            });
-        });
-    }
-
-    function renderSettings() {
-        let html = `
-            <div class="settings-container">
-                <div class="settings-card">
-                    <h3>🔒 Đổi mật khẩu</h3>
-                    <div class="form-group">
-                        <label>Mật khẩu cũ</label>
-                        <input type="password" id="oldPassword" placeholder="Nhập mật khẩu cũ" />
-                    </div>
-                    <div class="form-group">
-                        <label>Mật khẩu mới</label>
-                        <input type="password" id="newPassword" placeholder="Nhập mật khẩu mới" />
-                    </div>
-                    <div class="form-group">
-                        <label>Xác nhận mật khẩu mới</label>
-                        <input type="password" id="confirmPassword" placeholder="Xác nhận mật khẩu mới" />
-                    </div>
-                    <button class="settings-btn" id="changePasswordBtn">Đổi Mật Khẩu</button>
-                    <div id="passwordMsg" class="mt-2"></div>
-                </div>
-
-                <div class="settings-card">
-                    <h3>👤 Tài Khoản</h3>
-                    <p style="color: #8892b0; margin-bottom: 16px;">Đăng xuất khỏi thiết bị này.</p>
-                    <button class="settings-btn danger-btn" id="logoutDeviceBtn">Đăng Xuất Hệ Thống</button>
-                </div>
-            </div>
-        `;
-        dashboardContent.innerHTML = html;
-
-        document.getElementById('changePasswordBtn').addEventListener('click', function() {
-            const oldPass = document.getElementById('oldPassword').value;
-            const newPass = document.getElementById('newPassword').value;
-            const confirmPass = document.getElementById('confirmPassword').value;
-            const msg = document.getElementById('passwordMsg');
-
-            if (!oldPass || !newPass || !confirmPass) {
-                msg.className = 'msg-error';
-                msg.textContent = '⚠️ Vui lòng nhập đầy đủ thông tin';
-                return;
-            }
-            if (oldPass !== currentUser.password) {
-                msg.className = 'msg-error';
-                msg.textContent = '❌ Mật khẩu cũ không đúng';
-                return;
-            }
-            if (newPass !== confirmPass) {
-                msg.className = 'msg-error';
-                msg.textContent = '❌ Mật khẩu xác nhận không khớp';
-                return;
-            }
-            if (newPass.length < 6) {
-                msg.className = 'msg-error';
-                msg.textContent = '❌ Mật khẩu mới phải có ít nhất 6 ký tự';
-                return;
-            }
-
-            const account = accounts.find(acc => acc.id === currentUser.id);
-            if (account) {
-                account.password = newPass;
-                currentUser.password = newPass;
-                msg.className = 'msg-success';
-                msg.textContent = '✅ Đổi mật khẩu thành công!';
-                document.getElementById('oldPassword').value = '';
-                document.getElementById('newPassword').value = '';
-                document.getElementById('confirmPassword').value = '';
             }
         });
-
-        document.getElementById('logoutDeviceBtn').addEventListener('click', logout);
-    }
-
-    function login(username, password) {
-        const account = findAccount(username, password);
-        if (!account) {
-            loginError.style.display = 'block';
-            loginError.textContent = '❌ Sai tên đăng nhập hoặc mật khẩu';
-            return false;
-        }
-        currentUser = { ...account };
-        loginError.style.display = 'none';
-        loginContainer.style.display = 'none';
-        dashboard.style.display = 'block';
-        
-        userName.textContent = currentUser.username;
-        const roleNames = { owner: 'Chủ sở hữu hệ thống — toàn quyền', admin: 'Quản trị viên', user: 'Người dùng' };
-        userRole.textContent = roleNames[currentUser.role] || 'Người dùng';
-        userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
-        
-        renderMenu();
-        renderPage('home');
-        return true;
-    }
-
-    function logout() {
-        currentUser = null;
-        dashboard.style.display = 'none';
-        loginContainer.style.display = 'block';
-        loginUsername.value = '';
-        loginPassword.value = '';
-        loginError.style.display = 'none';
-    }
-
-    loginBtn.addEventListener('click', function() {
-        const username = loginUsername.value.trim();
-        const password = loginPassword.value.trim();
-        if (!username || !password) {
-            loginError.style.display = 'block';
-            loginError.textContent = '⚠️ Vui lòng nhập tên và mật khẩu';
-            return;
-        }
-        login(username, password);
     });
 
-    loginUsername.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
-    loginPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
-    logoutBtn.addEventListener('click', logout);
+    // Xử lý sửa
+    document.querySelectorAll('.action-btn.edit').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const id = this.dataset.id;
+            const account = accounts.find(acc => acc.id === id);
+            if (!account) return;
+            if (account.role === 'owner') {
+                alert('Không thể sửa tài khoản Owner!');
+                return;
+            }
+            
+            const newUsername = prompt('Nhập tên đăng nhập mới:', account.username);
+            if (newUsername && newUsername.trim() !== '') {
+                if (accounts.some(acc => acc.username === newUsername.trim() && acc.id !== id)) {
+                    alert('Tên đăng nhập đã tồn tại!');
+                    return;
+                }
+                const result = await updateAccount(id, newUsername.trim());
+                if (result.success) {
+                    renderPage('management');
+                } else {
+                    alert('❌ Lỗi khi cập nhật!');
+                }
+            }
+        });
+    });
+}
 
-    loginContainer.style.display = 'block';
+function renderSettings() {
+    let html = `
+        <div class="settings-container">
+            <div class="settings-card">
+                <h3>🔒 Đổi mật khẩu</h3>
+                <div class="form-group">
+                    <label>Mật khẩu cũ</label>
+                    <input type="password" id="oldPassword" placeholder="Nhập mật khẩu cũ" />
+                </div>
+                <div class="form-group">
+                    <label>Mật khẩu mới</label>
+                    <input type="password" id="newPassword" placeholder="Nhập mật khẩu mới" />
+                </div>
+                <div class="form-group">
+                    <label>Xác nhận mật khẩu mới</label>
+                    <input type="password" id="confirmPassword" placeholder="Xác nhận mật khẩu mới" />
+                </div>
+                <button class="settings-btn" id="changePasswordBtn">Đổi Mật Khẩu</button>
+                <div id="passwordMsg" class="mt-2"></div>
+            </div>
+
+            <div class="settings-card">
+                <h3>👤 Tài Khoản</h3>
+                <p style="color: #8892b0; margin-bottom: 16px;">Đăng xuất khỏi thiết bị này.</p>
+                <button class="settings-btn danger-btn" id="logoutDeviceBtn">Đăng Xuất Hệ Thống</button>
+            </div>
+        </div>
+    `;
+    dashboardContent.innerHTML = html;
+
+    document.getElementById('changePasswordBtn').addEventListener('click', async function() {
+        const oldPass = document.getElementById('oldPassword').value;
+        const newPass = document.getElementById('newPassword').value;
+        const confirmPass = document.getElementById('confirmPassword').value;
+        const msg = document.getElementById('passwordMsg');
+
+        if (!oldPass || !newPass || !confirmPass) {
+            msg.className = 'msg-error';
+            msg.textContent = '⚠️ Vui lòng nhập đầy đủ thông tin';
+            return;
+        }
+        if (oldPass !== currentUser.password) {
+            msg.className = 'msg-error';
+            msg.textContent = '❌ Mật khẩu cũ không đúng';
+            return;
+        }
+        if (newPass !== confirmPass) {
+            msg.className = 'msg-error';
+            msg.textContent = '❌ Mật khẩu xác nhận không khớp';
+            return;
+        }
+        if (newPass.length < 6) {
+            msg.className = 'msg-error';
+            msg.textContent = '❌ Mật khẩu mới phải có ít nhất 6 ký tự';
+            return;
+        }
+
+        const result = await changePassword(currentUser.id, newPass);
+        if (result.success) {
+            currentUser.password = newPass;
+            msg.className = 'msg-success';
+            msg.textContent = '✅ Đổi mật khẩu thành công!';
+            document.getElementById('oldPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        } else {
+            msg.className = 'msg-error';
+            msg.textContent = '❌ Lỗi khi đổi mật khẩu!';
+        }
+    });
+
+    document.getElementById('logoutDeviceBtn').addEventListener('click', logout);
+}
+
+// ============ ĐĂNG NHẬP / ĐĂNG XUẤT ============
+
+async function login(username, password) {
+    const account = accounts.find(acc => acc.username === username && acc.password === password);
+    if (!account) {
+        loginError.style.display = 'block';
+        loginError.textContent = '❌ Sai tên đăng nhập hoặc mật khẩu';
+        return false;
+    }
+    currentUser = { ...account };
+    loginError.style.display = 'none';
+    loginContainer.style.display = 'none';
+    dashboard.style.display = 'block';
+    
+    userName.textContent = currentUser.username;
+    const roleNames = { owner: 'Chủ sở hữu hệ thống — toàn quyền', admin: 'Quản trị viên', user: 'Người dùng' };
+    userRole.textContent = roleNames[currentUser.role] || 'Người dùng';
+    userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
+    
+    renderMenu();
+    renderPage('home');
+    return true;
+}
+
+function logout() {
+    currentUser = null;
     dashboard.style.display = 'none';
+    loginContainer.style.display = 'block';
+    loginUsername.value = '';
+    loginPassword.value = '';
+    loginError.style.display = 'none';
+}
+
+// ============ KHỞI TẠO ============
+
+async function init() {
+    // Load dữ liệu từ Firebase
+    await loadAccounts();
+    
+    // Ẩn loading, hiện login
+    loading.style.display = 'none';
+    loginContainer.style.display = 'block';
     
     console.log('🚀 Hệ thống sẵn sàng!');
-    console.log('📝 Tài khoản mẫu:');
-    console.log('👑 black_0x000000 / owner123');
-    console.log('🛡️ admin / admin123');
-    console.log('👤 541261 / user123');
-    console.log('👤 Money169-bau / user123');
-    console.log('👤 Vào / user123');
-})();
+    console.log('📊 Số tài khoản:', accounts.length);
+    console.log('📝 Danh sách tài khoản:', accounts);
+}
+
+// Sự kiện
+loginBtn.addEventListener('click', function() {
+    const username = loginUsername.value.trim();
+    const password = loginPassword.value.trim();
+    if (!username || !password) {
+        loginError.style.display = 'block';
+        loginError.textContent = '⚠️ Vui lòng nhập tên và mật khẩu';
+        return;
+    }
+    login(username, password);
+});
+
+loginUsername.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
+loginPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
+logoutBtn.addEventListener('click', logout);
+
+// Chạy
+init();
 </script>
 </body>
 </html>
