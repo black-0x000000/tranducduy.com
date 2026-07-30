@@ -2,7 +2,7 @@
 let accounts = [];
 let unsubscribeListener = null;
 
-// Lấy danh sách tài khoản (lần đầu)
+// Lấy danh sách tài khoản
 async function loadAccounts() {
     try {
         const snapshot = await db.collection('accounts').get();
@@ -45,12 +45,10 @@ function startRealtimeListener() {
             
             console.log('🔄 Cập nhật realtime:', accounts.length, 'tài khoản');
             
-            // Cập nhật lại giao diện nếu đang ở trang quản lý
             if (window.currentUser && window.currentPage === 'management') {
                 renderPage('management');
             }
             
-            // Cập nhật thông tin user hiện tại
             if (window.currentUser) {
                 const updatedUser = accounts.find(acc => acc.id === window.currentUser.id);
                 if (updatedUser) {
